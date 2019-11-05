@@ -1,8 +1,5 @@
-# use the node argon (4.4.3) image as base
-FROM node:argon
-
-# Set the Vorlon.JS Docker Image maintainer
-MAINTAINER Julien Corioland (Microsoft, DX)
+FROM node:10-alpine
+MAINTAINER William Le (w.le@acaprojects.com)
 
 # Expose port 1337
 EXPOSE 1337
