@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Stop puppeteer from failing to install chrome
+sudo npm install puppeteer@1.20.0 --unsafe-perm=true --alow-root --save
+
 # get version from package.json
 appVersion=$(cat package.json | jq -r '.version')
 
