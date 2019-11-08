@@ -20,19 +20,6 @@ gulp.task('default', function(){
   return gulp.start('default-server-all');
 });
 
-gulp.task('default-server-all', ['default-plugins', 'copyDTS-plugins'], function(){
-  return gulp.start('default-server');
-});
-
-
-//// *****
-
-//**** 
-
-// PLUGIN PART
-
-// *** 
-
 /**
  * Compile typescript files to their js respective files
  */
@@ -51,20 +38,35 @@ gulp.task('typescript-to-js-plugins', function() {
       ]);
 });
 
+gulp.task('concat-webstandards-rules-plugins', gulp.series('typescript-to-js-plugins'), function () {
+	return gulp.src(['./Plugins/release/**/webstandards/rules/*.js', './Plugins/release/**/webstandards/vorlon.webstandards.client.js'])
+		.pipe(concat('vorlon.webstandards.client.js'))
+		.pipe(gulp.dest('Plugins/release/plugins/webstandards/'));
+});
 
- /* Compile less files to their css respective files
+/**
+ * Minify all plugins.
+ * Do not hesitate to update it if you need to add your own files.
  */
-gulp.task('less-to-css-plugins', function() {
-  return gulp.src(['Plugins/Vorlon/**/*.less'], { base : '.' })
-    .pipe(less())
-    .pipe(gulp.dest(''));  
+gulp.task('scripts-plugins', gulp.series('concat-webstandards-rules-plugins'), function () {
+
+    return gulp.src([
+            './Plugins/**/vorlon.*.js',
+            '!./Plugins/**/vorlon.*.min.js'
+        ])
+        .pipe(rename(function (path) {
+                path.extname = ".min.js";
+              })
+            )
+        .pipe(uglify())
+        .pipe(gulp.dest('./Plugins'));
 });
 
 /**
  * Concat all js files in order into one big js file and minify it.
  * Do not hesitate to update it if you need to add your own files.
  */
-gulp.task('scripts-noplugin-plugins', ['typescript-to-js-plugins'], function() {
+gulp.task('scripts-noplugin-plugins', gulp.series('typescript-to-js-plugins'), function() {
     return gulp.src([
             'Plugins/libs/css.js',
             'Plugins/release/vorlon.tools.js',
@@ -82,17 +84,19 @@ gulp.task('scripts-noplugin-plugins', ['typescript-to-js-plugins'], function() {
         .pipe(gulp.dest('Plugins/release/'));
 });
 
-gulp.task('concat-webstandards-rules-plugins', ['typescript-to-js-plugins'], function () {
-	return gulp.src(['./Plugins/release/**/webstandards/rules/*.js', './Plugins/release/**/webstandards/vorlon.webstandards.client.js'])
-		.pipe(concat('vorlon.webstandards.client.js'))
-		.pipe(gulp.dest('Plugins/release/plugins/webstandards/'));
+ /* Compile less files to their css respective files
+ */
+gulp.task('less-to-css-plugins', function() {
+  return gulp.src(['Plugins/Vorlon/**/*.less'], { base : '.' })
+    .pipe(less())
+    .pipe(gulp.dest(''));  
 });
 
 /**
  * Specific task that need to be handled for specific plugins.
  * Do not hesitate to update it if you need to add your own files
  */
-gulp.task('scripts-specific-plugins-plugins', ['scripts-plugins'], function() {
+gulp.task('scripts-specific-plugins-plugins', gulp.series('scripts-plugins'), function() {
     // DOMTimeline
     gulp.src([
         'Plugins/Vorlon/plugins/domtimeline/mapping-system.js',
@@ -221,23 +225,34 @@ gulp.task('scripts-specific-plugins-plugins', ['scripts-plugins'], function() {
 
 });
 
-/**
- * Minify all plugins.
- * Do not hesitate to update it if you need to add your own files.
- */
-gulp.task('scripts-plugins', ['concat-webstandards-rules-plugins'], function () {
 
-    return gulp.src([
-            './Plugins/**/vorlon.*.js',
-            '!./Plugins/**/vorlon.*.min.js'
-        ])
-        .pipe(rename(function (path) {
-                path.extname = ".min.js";
-              })
-            )
-        .pipe(uglify())
-        .pipe(gulp.dest('./Plugins'));
+gulp.task('copyDTS-plugins', function () {
+
+    return  gulp.src(['Plugins/release/*.d.ts'])
+      .pipe(gulp.dest('./Server/Scripts/typings/Vorlon'));
+      
 });
+
+/**
+ * The default task, call the tasks: scripts, scripts-noplugin, copy, copyPlugins
+ */
+gulp.task('default-plugins', gulp.series('scripts-plugins', 'scripts-noplugin-plugins', 'less-to-css-plugins', 'scripts-specific-plugins-plugins'), function() {
+    return gulp.start('copy-plugins', 'copyPlugins-plugins', 'copyDTS-plugins');
+});
+
+gulp.task('default-server-all', gulp.series('default-plugins', 'copyDTS-plugins'), function(){
+  return gulp.start('default-server');
+});
+
+
+//// *****
+
+//**** 
+
+// PLUGIN PART
+
+// *** 
+
 
 /**
  * Move all files from Plugins to Server
@@ -266,19 +281,6 @@ gulp.task('copyPlugins-plugins', function () {
 
 });
 
-gulp.task('copyDTS-plugins', function () {
-
-    return  gulp.src(['Plugins/release/*.d.ts'])
-      .pipe(gulp.dest('./Server/Scripts/typings/Vorlon'));
-      
-});
-
-/**
- * The default task, call the tasks: scripts, scripts-noplugin, copy, copyPlugins
- */
-gulp.task('default-plugins', ['scripts-plugins', 'scripts-noplugin-plugins', 'less-to-css-plugins', 'scripts-specific-plugins-plugins'], function() {
-    return gulp.start('copy-plugins', 'copyPlugins-plugins', 'copyDTS-plugins');
-});
 
 /**
  * Watch task, will call the default task if a js file is updated.
@@ -335,7 +337,7 @@ gulp.task('typescript-to-js-server', function() {
             .pipe(gulp.dest('.'));
 });
 
-gulp.task('build-server', ['typescript-to-js-server'], function() {
+gulp.task('build-server', gulp.series('typescript-to-js-server'), function() {
 	//copy server files to desktop app
   return gulp.src([
   		'./server/**/*.*'
@@ -343,7 +345,7 @@ gulp.task('build-server', ['typescript-to-js-server'], function() {
   	.pipe(gulp.dest('./desktop/app/vorlon'));
 });
 
-gulp.task('default-server', ['build-server'], function() {
+gulp.task('default-server', gulp.series('build-server'), function() {
 });
 
 /**
@@ -356,7 +358,7 @@ gulp.task('watch-server', function() {
 });
 
 
-gulp.task('watch', ["watch-server", "watch-plugins", "webserver"], function() {
+gulp.task('watch', gulp.series('watch-server', 'watch-plugins', 'webserver'), function() {
 });
 
 /**
