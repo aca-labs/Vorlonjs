@@ -1,4 +1,4 @@
-FROM node:10-alpine
+FROM node:10-jessie
 MAINTAINER William Le (w.le@acaprojects.com)
 
 # Expose port 1337
